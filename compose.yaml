@@ -1,7 +1,7 @@
 # Safe preview: only the host's loopback address is published. No firewall permissions.
 services:
   linknest:
-    image: jacoyyyy/linknest:1.2.4
+    image: jacoyyyy/linknest:1.2.5
     build: .
     container_name: linknest
     restart: unless-stopped

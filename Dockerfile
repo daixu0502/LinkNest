@@ -35,7 +35,7 @@ VOLUME ["/data"]
 EXPOSE 17880/tcp
 STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD ["linknest", "healthcheck"]
-ARG VERSION=1.2.4
+ARG VERSION=1.2.5
 ARG SOURCE_REVISION=unknown
 ARG BUILD_DATE
 LABEL org.opencontainers.image.version=$VERSION \

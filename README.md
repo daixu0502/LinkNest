@@ -4,7 +4,7 @@
 
 LinkNest 是单容器网络服务控制台，提供反向代理、TCP / UDP 端口转发、阿里云动态域名与证书申请、轻面板、网络唤醒、访问过滤和 SSH Web 终端。
 
-当前版本 **1.2.4**，发布镜像支持 **Linux amd64 / ARM64**，适用于对应架构的 NAS / 路由器。前端为内嵌 HTML / CSS / JavaScript，无需 Node 构建。第三方资源与许可见 [THIRD_PARTY.md](THIRD_PARTY.md)。
+当前版本 **1.2.5**，发布镜像支持 **Linux amd64 / ARM64**，适用于对应架构的 NAS / 路由器。前端为内嵌 HTML / CSS / JavaScript，无需 Node 构建。第三方资源与许可见 [THIRD_PARTY.md](THIRD_PARTY.md)。
 
 镜像使用经过 ARM64 实机验证的精简 Debian 运行环境，保留 IPv4/IPv6 内核转发、证书、时区与现有前端功能。裁剪与发布入口见 [镜像构建与发布](docs/image-build.md)，验证范围见 [精简镜像验证](docs/minimal-image-validation.md)。
 
@@ -19,13 +19,13 @@ LinkNest 是单容器网络服务控制台，提供反向代理、TCP / UDP 端�
 从 Docker Hub 拉取（Linux ARM64）：
 
 ```sh
-docker pull jacoyyyy/linknest:1.2.4
+docker pull jacoyyyy/linknest:1.2.5
 ```
 
 在源码目录构建，默认构建宿主机架构，期间执行 Go 测试：
 
 ```sh
-docker build -t jacoyyyy/linknest:1.2.4 .
+docker build -t jacoyyyy/linknest:1.2.5 .
 ```
 
 依赖下载困难时可追加 `--build-arg GOPROXY=https://goproxy.cn,direct`。源码测试方法见 [测试说明](docs/testing.md)。独立运行环境、离线构建及禁止叠加旧应用镜像的发布流程见 [镜像构建与发布](docs/image-build.md)。
@@ -34,9 +34,9 @@ docker build -t jacoyyyy/linknest:1.2.4 .
 
 ```sh
 # 在已有镜像的设备上导出
-docker save jacoyyyy/linknest:1.2.4 | gzip > linknest-1.2.4-linux-arm64.tar.gz
+docker save jacoyyyy/linknest:1.2.5 | gzip > linknest-1.2.5-linux-arm64.tar.gz
 # 复制到另一台 ARM64 设备后导入
-gzip -dc linknest-1.2.4-linux-arm64.tar.gz | docker load
+gzip -dc linknest-1.2.5-linux-arm64.tar.gz | docker load
 ```
 
 ### 路由器 / NAS 部署
@@ -56,7 +56,7 @@ docker run -d --name linknest \
   -e LINKNEST_FIREWALL=enabled \
   --mount type=bind,source=/run/xtables.lock,target=/run/xtables.lock \
   -v linknest-data:/data \
-  jacoyyyy/linknest:1.2.4
+  jacoyyyy/linknest:1.2.5
 ```
 
 自动放行与内核转发需要较高网络权限，仅管理 LinkNest 自有规则，不清空宿主防火墙；不需要独立权限助手。不要使用 `--privileged` 或挂载 Docker Socket。WOL 广播建议使用 host 网络；公网可达仍取决于上级路由、运营商和防火墙。
@@ -133,10 +133,10 @@ docker start linknest
 
 ```sh
 docker volume create linknest-restored
-docker create --name linknest-restore -v linknest-restored:/data jacoyyyy/linknest:1.2.4
+docker create --name linknest-restore -v linknest-restored:/data jacoyyyy/linknest:1.2.5
 docker cp -a "$backup_dir/data/." linknest-restore:/data/
 docker rm linknest-restore
 # 此处按原部署参数启动，数据卷改为 linknest-restored；登录并检查业务。
 ```
 
-1.2.4 使用 schema 5。回滚到 1.1.5 时必须同时恢复升级前的数据，不要让旧程序读取新版数据卷。完整验收和部署步骤见 [构建与发布](docs/image-build.md)。
+1.2.5 使用 schema 5。回滚到 1.1.5 时必须同时恢复升级前的数据，不要让旧程序读取新版数据卷。完整验收和部署步骤见 [构建与发布](docs/image-build.md)。

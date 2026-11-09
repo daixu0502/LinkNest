@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Build and accept a release using only the local WSL Docker daemon.
 
-Run from Windows. Local test sources and Playwright modules are prerequisites;
+Run from Windows or its mounted source directory in WSL. Local test sources
+and Playwright modules are prerequisites;
 they deliberately do not ship in the source repository. No production changes.
 """
 import argparse
@@ -42,8 +43,12 @@ def source_digest(root=ROOT):
     for name,blob in zip(names,hashes):digest.update(name.encode()+b'\0'+blob.encode()+b'\0')
     return digest.hexdigest()
 
+def wsl_command(*values):
+    return (["wsl.exe", "--exec"] if os.name == "nt" else []) + list(values)
+
 def linux_path(value):
-    return run(["wsl.exe", "--exec", "wslpath", "-u", Path(value).resolve()])
+    resolved = Path(value).resolve()
+    return run(wsl_command("wslpath", "-u", resolved)) if os.name == "nt" else str(resolved)
 
 def archive_config_id(file):
     # Docker 29's containerd image store exposes a manifest digest as Id, while
@@ -61,8 +66,8 @@ def main():
     parser.add_argument("--goproxy", default="https://goproxy.cn,direct")
     parser.add_argument("--proxy", help="HTTP proxy for the vulnerability database")
     args = parser.parse_args()
-    if os.name != "nt":
-        raise SystemExit("Run this wrapper from the Windows source workspace")
+    if os.name != "nt" and not ROOT.as_posix().startswith("/mnt/"):
+        raise SystemExit("Run from the Windows source workspace or its /mnt/ WSL mount")
     for name in ["internal/app/reliability120_test.go", "scripts/test-reliability.cjs", "scripts/smoke-release.py", ".tools/kernel-qa.Dockerfile", ".tools/test-forward-netns.py", ".tools/test-deploy120.py"]:
         if not (ROOT/name).is_file():
             raise SystemExit("Missing required local acceptance file: "+name)
@@ -72,7 +77,7 @@ def main():
     gate = stage/"accepted.json"
     if gate.exists():
         gate.unlink()  # A failed new run must never leave a previous pass usable.
-    docker = ["wsl.exe", "--exec", "docker", "--context", "default"]
+    docker = wsl_command("docker", "--context", "default")
     context = json.loads(run(docker+["context", "inspect", "default"]))[0]
     if context["Endpoints"]["docker"]["Host"] != "unix:///var/run/docker.sock":
         raise SystemExit("Only the local WSL Docker socket is allowed")
@@ -89,7 +94,8 @@ def main():
     run(docker+["run", "--rm", "--network", "none", *mount, "--mount", f"type=bind,source={linux_path(args.node_modules)},target=/modules,readonly", "-e", "NODE_PATH=/modules", "-e", "LINKNEST_QA_OUTPUT=/src/.tools/validation-"+version, BROWSER, "sh", "-ec", 'for f in web/*.js; do node --check "$f"; done; for f in scripts/test-*.mjs scripts/test-*.cjs; do node "$f"; done'], stage/"browser.log")
     run(docker+["run", "--privileged", "--rm", "tonistiigi/binfmt:latest", "--install", "arm64"], stage/"binfmt.log")
     print("WSL isolated kernel and UDP runtime acceptance", flush=True)
-    run(["wsl.exe", "--user", "root", "--exec", "bash", "-c", "exec -a modprobe /usr/bin/kmod ip6table_nat"], stage/"kernel-module.log")
+    module_command = (["wsl.exe", "--user", "root", "--exec"] if os.name == "nt" else (["sudo", "-n"] if os.geteuid() else [])) + ["bash", "-c", "exec -a modprobe /usr/bin/kmod ip6table_nat"]
+    run(module_command, stage/"kernel-module.log")
     run(docker+["build", "-f", root+"/.tools/kernel-qa.Dockerfile", "-t", "linknest-kernel-qa:local", root+"/.tools"], stage/"kernel-build.log")
     run(docker+["run", "--rm", "--privileged", "--network", "none", *mount, *cache, "-e", "GOPROXY=off", "linknest-kernel-qa:local", "sh", "-ec", "go test -c -o .tools/forward-tests-linux-amd64 ./internal/app; python3 .tools/test-forward-netns.py; LINKNEST_LONG_NETWORK_QA=1 go test -run '^TestUDPUnidirectionalKeepsSession$' -v ./internal/app"], stage/"network.log")
     created = datetime.now(timezone.utc).isoformat()
@@ -104,7 +110,7 @@ def main():
         run(docker+["run", "--rm", "--network", "host", *mount, "--mount", "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock", "--mount", "type=bind,source=/usr/bin/docker,target=/usr/bin/docker,readonly", BROWSER, "python3", "scripts/smoke-release.py", "--image", tag, "--version", version, "--arch", arch], stage/(arch+"-smoke.log"))
         exported=stage/("candidate-"+arch+".tar")
         run(docker+["image","save","--platform","linux/"+arch,"-o",linux_path(exported),tag])
-        images[arch] = {"tag": tag, "id": archive_config_id(exported), "localID":info["Id"], "bytes": info["Size"]}
+        images[arch] = {"tag": tag, "id": archive_config_id(exported), "localID":info["Id"], "bytes": info["Size"], "archiveSHA256": hashlib.sha256(exported.read_bytes()).hexdigest()}
         container = run(docker+["create", "--platform", "linux/"+arch, "--label", "linknest.test=true", tag])
         binary = stage/("linknest-"+arch)
         try:

@@ -3,12 +3,12 @@
 .refresh-button .icon{width:20px;height:20px;stroke-width:1.9;transform-origin:center}
 .refresh-button.is-loading{opacity:1;color:var(--primary);background:var(--soft);border-color:var(--primary);cursor:progress}
 .refresh-button.is-loading .icon{animation:spin .8s linear infinite}
-.stat-link{display:block;color:var(--text);text-decoration:none;transition:background .16s ease,border-color .16s ease}
-.stat-link:hover{background:var(--soft);border-color:var(--primary)}
+
+
 /* Menus live outside the scrolling form, but inside the modal's top layer.
    Fixed positioning keeps both dialog dimensions and neighbouring fields stable. */
 .picker-menu.picker-floating{position:fixed;right:auto;bottom:auto;margin:0;z-index:100;box-sizing:border-box;max-height:210px;overscroll-behavior:contain;overflow-y:auto;box-shadow:var(--shadow)}
 .page-transition{animation:admin-page-in .18s ease-out both}
 @keyframes admin-page-in{from{opacity:.4;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 
-@media(prefers-reduced-motion:reduce){.page-transition{animation:none}.refresh-button .icon,.stat-link{transition:none}.refresh-button.is-loading .icon{animation:none}}
+@media(prefers-reduced-motion:reduce){.page-transition{animation:none}.refresh-button .icon{transition:none}.refresh-button.is-loading .icon{animation:none}}
