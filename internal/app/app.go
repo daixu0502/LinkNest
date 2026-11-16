@@ -29,9 +29,10 @@ import (
 var assets = web.Files
 
 type authConfig struct {
-	Username     string           `json:"username"`
-	PasswordHash string           `json:"passwordHash"`
-	TwoFactor    *twoFactorConfig `json:"twoFactor,omitempty"`
+	Username        string           `json:"username"`
+	PasswordHash    string           `json:"passwordHash"`
+	TwoFactor       *twoFactorConfig `json:"twoFactor,omitempty"`
+	TrustedBrowsers []trustedBrowser `json:"trustedBrowsers,omitempty"`
 }
 type session struct {
 	expires time.Time
@@ -219,6 +220,9 @@ func (a *App) handler() http.Handler {
 	})
 	mux.HandleFunc("/api/setup", a.setup)
 	mux.HandleFunc("/api/login", a.login)
+	// Revocation only removes privileges; it must work even after a session expires.
+	mux.HandleFunc("/api/logout", a.logout)
+	mux.HandleFunc("/api/2fa/trust/revoke", a.cancelBrowserTrust)
 	mux.HandleFunc(iconPrefix, func(w http.ResponseWriter, r *http.Request) { serveCachedIcon(a.store.dir, w, r) })
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		if !a.authenticated(r) {
@@ -319,9 +323,10 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var q struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		Code     string `json:"code"`
+		Username    string `json:"username"`
+		Password    string `json:"password"`
+		Code        string `json:"code"`
+		TrustDevice bool   `json:"trustDevice"`
 	}
 	if !decode(w, r, &q) {
 		return
@@ -377,7 +382,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		fail(w, 429, "登录会话过多，请先退出其他会话")
 		return
 	}
-	if a.auth.TwoFactor != nil {
+	if a.auth.TwoFactor != nil && trustedUntil(a.auth, r, time.Now()).IsZero() {
 		if strings.TrimSpace(q.Code) == "" {
 			respond(w, 200, map[string]any{"ok": true, "twoFactorRequired": true})
 			return
@@ -391,8 +396,7 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 			fail(w, 401, "动态验证码或恢复码无效、已使用或已过期")
 			return
 		}
-		if err := a.saveAuthLocked(next); err != nil {
-			fail(w, 500, "无法保存验证状态，请稍后重试")
+		if !a.saveSecurityProofLocked(w, r, next, q.TrustDevice) {
 			return
 		}
 	}
@@ -438,6 +442,7 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 			NewPassword     string `json:"newPassword"`
 			Username        string `json:"username"`
 			Code            string `json:"code"`
+			TrustDevice     bool   `json:"trustDevice"`
 		}
 		if !decode(w, r, &q) {
 			return
@@ -445,7 +450,7 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		a.mu.Lock()
 		defer a.mu.Unlock()
 		auth := a.auth
-		if !a.securityProofLocked(w, r, &auth, q.CurrentPassword, q.Code, true) {
+		if ok, _ := a.securityProofLocked(w, r, &auth, q.CurrentPassword, q.Code, true); !ok {
 			return
 		}
 		username := a.auth.Username
@@ -470,6 +475,7 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		auth.Username, auth.PasswordHash = username, string(hash)
+		auth.TrustedBrowsers = nil
 		data, _ := json.Marshal(auth)
 		if writeAtomic(filepath.Join(a.store.dir, "auth.json"), data) != nil {
 			fail(w, 500, "无法保存密码")
@@ -480,6 +486,7 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		a.terminals.revoke("")
 		a.twoFactorPending = nil
 		clearAdminCookie(w, r)
+		clearTrustCookie(w, r)
 		respond(w, 200, map[string]bool{"ok": true})
 		return
 	}
@@ -491,6 +498,9 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		events := append([]Event{}, a.events...)
 		username := a.auth.Username
 		twoFactor := twoFactorState(a.auth)
+		if until := trustedUntil(a.auth, r, time.Now()); !until.IsZero() {
+			twoFactor["trustedUntil"] = until.Format(time.RFC3339Nano)
+		}
 		a.mu.Unlock()
 		respond(w, 200, map[string]any{"ok": true, "version": version, "config": c, "configRevision": revision, "application": a.applicationStatus(), "diagnostics": a.diagnostics.snapshot(), "username": username, "twoFactor": twoFactor, "dnsSecretSet": hasSecret, "credentialFlags": credentialFlags, "interfaces": interfaces(), "routerIPs": a.routerIPs.snapshot(), "rules": a.ruleStatuses(revision), "firewall": a.engine.fw.get(), "ddns": a.dns.status(), "certificates": a.certs.list(), "certificateTasks": a.certs.tasks(), "certificateJobs": a.certs.status(), "events": events, "adminAddress": a.admin, "adminTlsStatus": a.adminTLSStatus(), "upnpPorts": a.upnpPortsStatus(c.Rules)})
 		return
@@ -559,18 +569,6 @@ func (a *App) api(w http.ResponseWriter, r *http.Request) {
 		c, _ = redactedConfig(c)
 		w.Header().Set("Content-Disposition", "attachment; filename=linknest-config.json")
 		respond(w, 200, c)
-		return
-	}
-	if p == "/api/logout" && r.Method == "POST" {
-		c, _ := r.Cookie(adminCookieName(r))
-		if c != nil {
-			a.mu.Lock()
-			delete(a.sessions, c.Value)
-			a.terminals.revoke(c.Value)
-			a.mu.Unlock()
-		}
-		clearAdminCookie(w, r)
-		respond(w, 200, map[string]bool{"ok": true})
 		return
 	}
 	if p == "/api/ddns/run" && r.Method == "POST" {

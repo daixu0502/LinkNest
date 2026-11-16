@@ -3,8 +3,14 @@
 :root{--scroll-thumb:#8995ab88;--scroll-hover:#62738cbb}
 /* Reserve the document gutter even while a dialog locks the body scroll. */
 html{scrollbar-gutter:stable}
+/* The portal already reserves space inside its desktop card scroller. An
+   extra root gutter exposes only the flat canvas color beside the gradient. */
+html.public-portal{scrollbar-gutter:auto}
 .cards-area,.sidebar,.modal-content,.icon-results,.picker-menu,.picker-options,.source-list,.panel-tabs,.xterm-viewport{scrollbar-gutter:stable}
-@supports not (scrollbar-gutter:stable){html,.cards-area{overflow-y:scroll}}
+@supports not (scrollbar-gutter:stable){html:not(.public-portal),.cards-area{overflow-y:scroll}}
+/* The portal uses the document scroller on touch screens, including browsers
+   without scrollbar-gutter support. Do not restore nested scrolling here. */
+@media(max-width:680px),(hover:none) and (pointer:coarse){html.public-portal{scrollbar-gutter:auto}html.public-portal .cards-area{overflow:visible;scrollbar-gutter:auto}}
 html[data-theme=dark]{--scroll-thumb:#a4b3cc66;--scroll-hover:#b8c9e099}
 @media(prefers-color-scheme:dark){html:not([data-theme=light]){--scroll-thumb:#a4b3cc66;--scroll-hover:#b8c9e099}}
 *{scrollbar-width:thin;scrollbar-color:var(--scroll-thumb) transparent}

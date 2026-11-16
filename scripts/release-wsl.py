@@ -16,7 +16,7 @@ import subprocess
 import tarfile
 
 ROOT = Path(__file__).resolve().parents[1]
-GO = "golang:1.26.10-bookworm"
+GO = "golang:1.26.11-bookworm"
 BROWSER = "mcr.microsoft.com/playwright:v1.62.1-noble"
 
 def source_version():
@@ -119,7 +119,7 @@ def main():
             run(docker+["rm", container])
         build_info = stage/(arch+"-build-info.log")
         run(docker+["run", "--rm", *mount, GO, "go", "version", "-m", "/src/.tools/validation-"+version+"/linknest-"+arch], build_info)
-        if "go1.26.10" not in build_info.read_text(encoding="utf-8").splitlines()[0]:
+        if "go1.26.11" not in build_info.read_text(encoding="utf-8").splitlines()[0]:
             raise RuntimeError("Candidate Go compiler version mismatch")
     if source_digest() != source:
         raise RuntimeError("Source changed during acceptance; rerun before deploying")

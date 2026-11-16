@@ -5,7 +5,7 @@ const layouts={cards:'卡片',compact:'紧凑',list:'列表',minimal:'极简'};
 const engines={bing:['Bing','https://www.bing.com/search?q='],baidu:['百度','https://www.baidu.com/s?wd='],google:['Google','https://www.google.com/search?q='],duckduckgo:['DuckDuckGo','https://duckduckgo.com/?q=']};
 const backgrounds=['aurora','sunset','ocean','forest','dusk','slate','mist'];
 // Let the root canvas extend the same custom picture below Safari's chrome.
-// No solid theme tint or fixed background element at the viewport edges.
+// The preset base color also covers loading failures and browser edge areas.
 const backgroundImage=document.querySelector('.page-background');
 if(backgroundImage)root.style.setProperty('--panel-background',`url(${JSON.stringify(backgroundImage.getAttribute('src'))})`);
 const preferenceKey='linknest-panel-preferences-v1';
@@ -14,7 +14,7 @@ if(typeof preferences!=='object'||Array.isArray(preferences))preferences={};
 function remember(key,value){preferences[key]=value;try{localStorage.setItem(preferenceKey,JSON.stringify(preferences));}catch{}}
 function markChoice(selector,key,value){document.querySelectorAll(selector).forEach(b=>b.setAttribute('aria-pressed',String(b.dataset[key]===value)));}
 function setLayout(value){if(!layouts[value])value='cards';root.dataset.layout=value;const label=document.querySelector('#layout-label');if(label)label.textContent=layouts[value];markChoice('button[data-layout]','layout',value);}
-function setBackground(value){root.dataset.background=backgrounds.includes(value)?value:'aurora';markChoice('button[data-background]','background',root.dataset.background);}
+function setBackground(value){root.dataset.background=backgrounds.includes(value)?value:'aurora';markChoice('button[data-background]','background',root.dataset.background);const color=getComputedStyle(root).getPropertyValue('--canvas-base').trim();if(color)document.querySelector('meta[name="theme-color"]')?.setAttribute('content',color);}
 function setCardMotion(value){
  root.dataset.cardMotion=['auto','on','off'].includes(value)?value:'auto';
  markChoice('button[data-card-motion]','cardMotion',root.dataset.cardMotion);

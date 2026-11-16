@@ -1,4 +1,6 @@
 .twofactor-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.twofactor-proof [hidden]{display:none!important}.modal-content>.twofactor-proof{margin:20px 0}.twofactor-proof .trust-status{margin:0}
+.trust-browser-choice{display:flex;align-items:flex-start;gap:10px;padding:10px 0;min-height:44px;cursor:pointer;font-size:13px}.trust-browser-choice input{flex:0 0 auto;width:18px;height:18px;margin:2px 0 0;accent-color:var(--accent)}.trust-browser-choice small{display:block;font-size:12px;color:var(--muted);margin-top:4px;line-height:1.6}.twofactor-proof{min-width:0}
 .twofactor-qr{display:flex;justify-content:center;margin:0 0 18px}
 .twofactor-qr img{display:block;max-width:100%;height:auto;background:#fff;border-radius:12px;border:12px solid #fff}
 .twofactor-secret{margin:16px 0}.twofactor-secret summary{cursor:pointer}.twofactor-secret .code{overflow-wrap:anywhere}

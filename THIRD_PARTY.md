@@ -4,7 +4,7 @@
 
 轻面板视觉布局参考用户提供的 Lucky 截图；前端独立实现，未复制 Lucky 源码或内置素材。
 
-- Go 标准库：BSD-3-Clause，构建工具链 Go 1.26.10。
+- Go 标准库：BSD-3-Clause，构建工具链 Go 1.26.11。
 - golang.org/x/crypto v0.58.0（ACME、SSH、bcrypt）：BSD-3-Clause。
 - golang.org/x/sys v0.49.0（网卡绑定等系统调用）：BSD-3-Clause。
 - github.com/gorilla/websocket v1.5.3：BSD-2-Clause。

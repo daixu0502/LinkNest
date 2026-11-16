@@ -149,16 +149,16 @@ func (a *App) saveAuthLocked(auth authConfig) error {
 }
 
 // Sensitive authenticated operations have their own bounded, session-keyed limiter.
-func (a *App) securityProofLocked(w http.ResponseWriter, r *http.Request, auth *authConfig, password, code string, requireSecond bool) bool {
+func (a *App) securityProofLocked(w http.ResponseWriter, r *http.Request, auth *authConfig, password, code string, requireSecond bool) (authorized, freshFactor bool) {
 	ck, err := r.Cookie(adminCookieName(r))
 	if err != nil {
 		fail(w, 401, "请重新登录")
-		return false
+		return false, false
 	}
 	s, ok := a.sessions[ck.Value]
-	if !ok || time.Now().After(s.expires) || s.secure != (r.TLS != nil) {
+	if !ok || !time.Now().Before(s.expires) || s.secure != (r.TLS != nil) {
 		fail(w, 401, "请重新登录")
-		return false
+		return false, false
 	}
 	key := "security:" + ck.Value
 	now := time.Now()
@@ -170,20 +170,25 @@ func (a *App) securityProofLocked(w http.ResponseWriter, r *http.Request, auth *
 	at := a.failures[key]
 	if at.n >= 6 || len(a.failures) > 1024 {
 		fail(w, 429, "验证尝试过多，请 5 分钟后重试")
-		return false
+		return false, false
 	}
 	valid := bcrypt.CompareHashAndPassword([]byte(auth.PasswordHash), []byte(password)) == nil
-	if valid && requireSecond && auth.TwoFactor != nil {
+	if valid && requireSecond && auth.TwoFactor != nil && trustedUntil(*auth, r, now).IsZero() {
+		if strings.TrimSpace(code) == "" {
+			respond(w, 403, map[string]any{"error": "请补充动态验证码或恢复码", "errorCode": "two_factor_required", "twoFactorRequired": true})
+			return false, false
+		}
 		valid = a.consumeSecondFactor(auth, code, now)
+		freshFactor = valid
 	}
 	if !valid {
 		at.n++
 		at.until = now.Add(5 * time.Minute)
 		a.failures[key] = at
 		fail(w, 403, "密码或动态验证码 / 恢复码不正确（验证码不可重复使用）")
-		return false
+		return false, false
 	}
-	return true
+	return true, freshFactor
 }
 func (a *App) twoFactorAPI(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -191,8 +196,9 @@ func (a *App) twoFactorAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var q struct {
-		Password string `json:"password"`
-		Code     string `json:"code"`
+		Password    string `json:"password"`
+		Code        string `json:"code"`
+		TrustDevice bool   `json:"trustDevice"`
 	}
 	if !decode(w, r, &q) {
 		return
@@ -200,7 +206,7 @@ func (a *App) twoFactorAPI(w http.ResponseWriter, r *http.Request) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	auth := a.auth
-	if !a.securityProofLocked(w, r, &auth, q.Password, q.Code, r.URL.Path != "/api/2fa/begin") {
+	if ok, _ := a.securityProofLocked(w, r, &auth, q.Password, q.Code, r.URL.Path != "/api/2fa/begin"); !ok {
 		return
 	}
 	ck, _ := r.Cookie(adminCookieName(r))
@@ -254,8 +260,8 @@ func (a *App) twoFactorAPI(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		auth.TwoFactor = &twoFactorConfig{Secret: secret, LastStep: step, RecoveryHashes: hashes}
-		if a.saveAuthLocked(auth) != nil {
-			fail(w, 500, "保存失败，尚未开启两步验证")
+		auth.TrustedBrowsers = nil
+		if !a.saveSecurityProofLocked(w, r, auth, q.TrustDevice) {
 			return
 		}
 		a.twoFactorPending = nil
@@ -278,8 +284,11 @@ func (a *App) twoFactorAPI(w http.ResponseWriter, r *http.Request) {
 				fail(w, 500, "无法生成恢复码")
 				return
 			}
-			auth.TwoFactor.RecoveryHashes = hashes
+			next := *auth.TwoFactor
+			next.RecoveryHashes = hashes
+			auth.TwoFactor = &next
 		}
+		auth.TrustedBrowsers = nil
 		if a.saveAuthLocked(auth) != nil {
 			fail(w, 500, "无法保存验证设置")
 			return
@@ -287,6 +296,7 @@ func (a *App) twoFactorAPI(w http.ResponseWriter, r *http.Request) {
 		a.twoFactorPending = nil
 		delete(a.failures, "security:"+ck.Value)
 		a.revokeOtherSessionsLocked(ck.Value)
+		clearTrustCookie(w, r)
 		respond(w, 200, map[string]any{"ok": true, "recoveryCodes": codes})
 	default:
 		fail(w, 404, "接口不存在")

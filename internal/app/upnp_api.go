@@ -177,6 +177,7 @@ type upnpNativeRequest struct {
 	PrivateKey     string `json:"privateKey"`
 	AdminPassword  string `json:"adminPassword"`
 	Code           string `json:"code"`
+	TrustDevice    bool   `json:"trustDevice"`
 	DeleteExisting bool   `json:"deleteExisting"`
 }
 
@@ -191,10 +192,9 @@ func (a *App) upnpApplyPolicy(w http.ResponseWriter, r *http.Request, ctx contex
 	}
 	a.mu.Lock()
 	auth := a.auth
-	ok := a.securityProofLocked(w, r, &auth, q.AdminPassword, q.Code, true)
-	if ok && a.saveAuthLocked(auth) != nil {
-		fail(w, 500, "无法保存二次验证状态")
-		ok = false
+	ok, freshFactor := a.securityProofLocked(w, r, &auth, q.AdminPassword, q.Code, true)
+	if ok {
+		ok = a.saveSecurityProofLocked(w, r, auth, q.TrustDevice && freshFactor)
 	}
 	a.mu.Unlock()
 	if !ok {

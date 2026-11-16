@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.26.10-bookworm AS build
+FROM --platform=$BUILDPLATFORM golang:1.26.11-bookworm AS build
 ARG TARGETARCH
 ARG GOPROXY=https://proxy.golang.org,direct
 ENV CGO_ENABLED=0 GOMAXPROCS=2 GOMEMLIMIT=256MiB
@@ -35,7 +35,7 @@ VOLUME ["/data"]
 EXPOSE 17880/tcp
 STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD ["linknest", "healthcheck"]
-ARG VERSION=1.2.5
+ARG VERSION=1.2.6
 ARG SOURCE_REVISION=unknown
 ARG BUILD_DATE
 LABEL org.opencontainers.image.version=$VERSION \

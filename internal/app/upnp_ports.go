@@ -176,10 +176,9 @@ func (a *App) upnpProtectPorts(w http.ResponseWriter, r *http.Request, ctx conte
 	}
 	a.mu.Lock()
 	auth := a.auth
-	ok := a.securityProofLocked(w, r, &auth, q.AdminPassword, q.Code, true)
-	if ok && a.saveAuthLocked(auth) != nil {
-		fail(w, 500, "无法保存二次验证状态")
-		ok = false
+	ok, freshFactor := a.securityProofLocked(w, r, &auth, q.AdminPassword, q.Code, true)
+	if ok {
+		ok = a.saveSecurityProofLocked(w, r, auth, q.TrustDevice && freshFactor)
 	}
 	a.mu.Unlock()
 	if !ok {

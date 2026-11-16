@@ -1,5 +1,14 @@
 # LinkNest 1.2.0 测试
 
+## 浏览器信任与手机轻面板
+
+- 本地 `trusted_devices_test.go` 覆盖 24 小时固定到期、8 小时会话隔离、重启、多标签页、HTTP/HTTPS 与 Host 隔离、伪造令牌、UPnP 验证复用、安全设置全局撤销、过期会话主动退出、限额及原子保存失败。原有 TOTP、防重放、恢复码与限流测试继续执行。
+- 本地 `scripts/test-trust-mobile.cjs` 启动隔离的真实程序，使用临时数据目录和容器回环端口；覆盖真实登录信任、重启免动态码、跨标签页撤销后原弹窗补验和字段保留。Chromium / WebKit 检查 320–430px、横屏、短视口和桌面，包含四种布局、深浅主题、菜单、触控尺寸及背景加载 / 失败。
+- 在本机 WSL Docker 中构建测试二进制后设置 `LINKNEST_QA_BINARY`，或使用默认本地路径 `.tools/trust-mobile-20261116/linknest`；依赖沿用 `.tools/qa-node/node_modules`。测试记录与截图保存在被忽略的 `.tools/trust-mobile-20261116/`，不进入源码包。
+- iPhone Safari 真机需另行记录 iOS/Safari 版本，验收地址栏展开 / 收起、状态栏、底部安全区、回弹与真实软键盘；WebKit 自动测试不等同于此项通过。
+
+接口兼容：登录及二次验证请求新增可选布尔值 `trustDevice`；`GET /api/state` 的 `twoFactor.trustedUntil` 仅在当前信任有效时提供。需要补验时，管理操作返回 HTTP 403、`errorCode: "two_factor_required"` 和 `twoFactorRequired: true`；登录继续沿用原有的验证码挑战响应。`POST /api/2fa/trust/revoke` 仅撤销当前浏览器信任；与退出接口一样，登录过期后仍可调用，但继续要求同源及 `X-LinkNest-Request` 校验。服务端认证文件新增可选 `trustedBrowsers`，旧文件无需迁移，原子保存最多 32 条哈希记录；旧版本不认识此字段时恢复原有逐次验证码行为。
+
 ## 运行
 
 ```sh

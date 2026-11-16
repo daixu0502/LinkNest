@@ -4,9 +4,9 @@
 
 LinkNest 是单容器网络服务控制台，提供反向代理、TCP / UDP 端口转发、阿里云动态域名与证书申请、轻面板、网络唤醒、访问过滤和 SSH Web 终端。
 
-当前版本 **1.2.5**，发布镜像支持 **Linux amd64 / ARM64**，适用于对应架构的 NAS / 路由器。前端为内嵌 HTML / CSS / JavaScript，无需 Node 构建。第三方资源与许可见 [THIRD_PARTY.md](THIRD_PARTY.md)。
+当前版本 **1.2.6**，发布镜像支持 **Linux amd64 / ARM64**，适用于对应架构的 NAS / 路由器。前端为内嵌 HTML / CSS / JavaScript，无需 Node 构建。第三方资源与许可见 [THIRD_PARTY.md](THIRD_PARTY.md)。
 
-**2026-11-09 同版本重新发布**：证书、域名行的高亮已与网络服务行统一完整圆角描边和内外留白，总览样式修订标记为 `row-outline-2`。若已拉取早期 1.2.5，请重新拉取并用原参数重建容器，保留原数据卷；仅重启旧容器不会更新镜像。详见 [1.2.5 更新记录](docs/changelog-1.2.5.md)。
+**1.2.6 更新**：增加 24 小时浏览器验证信任，手机轻面板支持整页滚动，修复桌面右侧多余滚动槽露出的纯色色条，并更新 Go 安全修复版本。详见 [1.2.6 更新记录](docs/changelog-1.2.6.md)。
 
 镜像使用经过 ARM64 实机验证的精简 Debian 运行环境，保留 IPv4/IPv6 内核转发、证书、时区与现有前端功能。裁剪与发布入口见 [镜像构建与发布](docs/image-build.md)，验证范围见 [精简镜像验证](docs/minimal-image-validation.md)。
 
@@ -21,13 +21,13 @@ LinkNest 是单容器网络服务控制台，提供反向代理、TCP / UDP 端�
 从 Docker Hub 拉取（Linux ARM64）：
 
 ```sh
-docker pull jacoyyyy/linknest:1.2.5
+docker pull jacoyyyy/linknest:1.2.6
 ```
 
 在源码目录构建，默认构建宿主机架构，期间执行 Go 测试：
 
 ```sh
-docker build -t jacoyyyy/linknest:1.2.5 .
+docker build -t jacoyyyy/linknest:1.2.6 .
 ```
 
 依赖下载困难时可追加 `--build-arg GOPROXY=https://goproxy.cn,direct`。源码测试方法见 [测试说明](docs/testing.md)。独立运行环境、离线构建及禁止叠加旧应用镜像的发布流程见 [镜像构建与发布](docs/image-build.md)。
@@ -36,9 +36,9 @@ docker build -t jacoyyyy/linknest:1.2.5 .
 
 ```sh
 # 在已有镜像的设备上导出
-docker save jacoyyyy/linknest:1.2.5 | gzip > linknest-1.2.5-linux-arm64.tar.gz
+docker save jacoyyyy/linknest:1.2.6 | gzip > linknest-1.2.6-linux-arm64.tar.gz
 # 复制到另一台 ARM64 设备后导入
-gzip -dc linknest-1.2.5-linux-arm64.tar.gz | docker load
+gzip -dc linknest-1.2.6-linux-arm64.tar.gz | docker load
 ```
 
 ### 路由器 / NAS 部署
@@ -58,7 +58,7 @@ docker run -d --name linknest \
   -e LINKNEST_FIREWALL=enabled \
   --mount type=bind,source=/run/xtables.lock,target=/run/xtables.lock \
   -v linknest-data:/data \
-  jacoyyyy/linknest:1.2.5
+  jacoyyyy/linknest:1.2.6
 ```
 
 自动放行与内核转发需要较高网络权限，仅管理 LinkNest 自有规则，不清空宿主防火墙；不需要独立权限助手。不要使用 `--privileged` 或挂载 Docker Socket。WOL 广播建议使用 host 网络；公网可达仍取决于上级路由、运营商和防火墙。
@@ -80,6 +80,10 @@ docker exec linknest cat /data/bootstrap.token
 在页面输入口令，创建管理员用户名与 12—72 字节密码；没有默认账号密码，初始化后口令文件删除。随后配置业务规则、DNS 凭据和证书。管理 HTTPS 需在设置中选择有效证书并开启，不会在申请成功后自动开启。
 
 两步验证可在「设置 → 两步验证（2FA）」开启。验证管理员密码后，用 Microsoft Authenticator 添加「其他账户」扫描本地生成的二维码，再输入 6 位动态验证码确认。启用前不会改变登录方式。请保存仅显示一次的 10 个恢复码；丢失手机时，使用账号、密码与一个恢复码登录，再关闭或重新绑定。恢复码只能使用一次，也可在设置中重新生成；验证码同一轮不可重复使用，手机与服务器需自动同步时间。建议通过 HTTPS 或 SSH 隧道绑定。启用后不要降级到不支持 2FA 的旧程序，否则旧程序不会要求动态验证码。
+
+登录、绑定及需要二次验证的日常管理操作可勾选「信任此浏览器 24 小时」，默认不勾选。验证成功后固定计时，不自动续期；期间登录与所有管理操作免动态码，敏感操作仍需管理员密码。登录会话仍为 8 小时，服务重启或会话到期后需要重新输入账号密码。信任仅限当前浏览器、访问地址和协议，不随配置导出；服务端只保存令牌哈希。主动退出或设置中的「取消此浏览器信任」撤销当前信任，修改账户、关闭 / 重绑两步验证或重置恢复码撤销全部旧信任。绑定新验证器仍需输入其验证码。
+
+手机及触屏设备的轻面板采用整页滚动，页头、搜索与筛选随页面滚出；桌面保留卡片区域滚动。背景预设、自定义图片与安全区共用完整页面背景，图片加载失败时使用预设底色。Safari 状态栏和工具栏的最终透明度由系统控制，浏览器模拟不能替代 iPhone 真机验收。
 
 升级前备份，拉取新镜像后用原参数重建容器，保留原数据卷。同名容器需先停止并移除；**不要删除数据卷**。
 
@@ -135,10 +139,10 @@ docker start linknest
 
 ```sh
 docker volume create linknest-restored
-docker create --name linknest-restore -v linknest-restored:/data jacoyyyy/linknest:1.2.5
+docker create --name linknest-restore -v linknest-restored:/data jacoyyyy/linknest:1.2.6
 docker cp -a "$backup_dir/data/." linknest-restore:/data/
 docker rm linknest-restore
 # 此处按原部署参数启动，数据卷改为 linknest-restored；登录并检查业务。
 ```
 
-1.2.5 使用 schema 5。回滚到 1.1.5 时必须同时恢复升级前的数据，不要让旧程序读取新版数据卷。完整验收和部署步骤见 [构建与发布](docs/image-build.md)。
+1.2.6 使用 schema 5。回滚到 1.1.5 时必须同时恢复升级前的数据，不要让旧程序读取新版数据卷。完整验收和部署步骤见 [构建与发布](docs/image-build.md)。

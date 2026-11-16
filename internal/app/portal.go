@@ -80,6 +80,13 @@ func portalOrigin(r *http.Request) bool {
 type panelChoice struct{ Key, Name string }
 
 var portalPage = template.Must(template.New("portal.html").Funcs(template.FuncMap{
+	"panelColor": func(preset string) string {
+		colors := map[string]string{"aurora": "#6125db", "sunset": "#dc586d", "ocean": "#1b69b1", "forest": "#087d62", "dusk": "#672a70", "slate": "#293442", "mist": "#c8dafa"}
+		if color := colors[preset]; color != "" {
+			return color
+		}
+		return colors["aurora"]
+	},
 	"version": func() string { return version },
 	"inc":     func(v int) int { return v + 1 },
 	"layouts": func() []panelChoice {
