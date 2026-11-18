@@ -1,6 +1,6 @@
 'use strict';
 const defaultPanelCIDRs=['10.0.0.0/8','172.16.0.0/12','192.168.0.0/16','127.0.0.0/8','::1/128','fc00::/7'];
-const panelBackgrounds=[['aurora','极光 · 紫蓝渐变'],['sunset','日落'],['ocean','海洋'],['forest','森林'],['dusk','暮色'],['slate','石墨'],['mist','晨雾']];
+const panelBackgrounds=[['aurora','极光 · 紫蓝渐变'],['sunset','日落'],['ocean','海洋'],['forest','森林'],['dusk','暮色'],['slate','石墨'],['mist','晨雾'],['spectrum','光谱 · 全色环']];
 function panelTabFromHash(hash=location.hash){const part=hash.split('/')[2];return ['sites','network','appearance','global','icons','json'].includes(part)?part:'sites';}
 let panelTab=panelTabFromHash();
 function panelOptions(){return state.config.panel||{};}

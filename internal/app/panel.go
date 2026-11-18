@@ -79,7 +79,7 @@ func validatePanel(c Config) error {
 	if !oneOf(p.NetworkMode, "", "external", "internal", "auto", "mixed") {
 		return errors.New("未知面板网络模式")
 	}
-	if !oneOf(p.BackgroundPreset, "", "aurora", "sunset", "ocean", "forest", "dusk", "slate", "mist") {
+	if !oneOf(p.BackgroundPreset, "", "aurora", "sunset", "ocean", "forest", "dusk", "slate", "mist", "spectrum") {
 		return errors.New("未知面板背景")
 	}
 	if len(p.IconSources) > 12 {

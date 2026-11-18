@@ -81,7 +81,7 @@ type panelChoice struct{ Key, Name string }
 
 var portalPage = template.Must(template.New("portal.html").Funcs(template.FuncMap{
 	"panelColor": func(preset string) string {
-		colors := map[string]string{"aurora": "#6125db", "sunset": "#dc586d", "ocean": "#1b69b1", "forest": "#087d62", "dusk": "#672a70", "slate": "#293442", "mist": "#c8dafa"}
+		colors := map[string]string{"aurora": "#6125db", "sunset": "#dc586d", "ocean": "#1b69b1", "forest": "#087d62", "dusk": "#672a70", "slate": "#293442", "mist": "#c8dafa", "spectrum": "#244cb5"}
 		if color := colors[preset]; color != "" {
 			return color
 		}
@@ -93,7 +93,7 @@ var portalPage = template.Must(template.New("portal.html").Funcs(template.FuncMa
 		return []panelChoice{{"cards", "卡片"}, {"compact", "紧凑"}, {"list", "列表"}, {"minimal", "极简"}}
 	},
 	"backgrounds": func() []panelChoice {
-		return []panelChoice{{"aurora", "极光"}, {"sunset", "日落"}, {"ocean", "海洋"}, {"forest", "森林"}, {"dusk", "暮色"}, {"slate", "石墨"}, {"mist", "晨雾"}}
+		return []panelChoice{{"aurora", "极光"}, {"sunset", "日落"}, {"ocean", "海洋"}, {"forest", "森林"}, {"dusk", "暮色"}, {"slate", "石墨"}, {"mist", "晨雾"}, {"spectrum", "光谱 · 全色环"}}
 	},
 	"engines": func() []panelChoice {
 		return []panelChoice{{"bing", "Bing"}, {"baidu", "百度"}, {"google", "Google"}, {"duckduckgo", "DuckDuckGo"}}

@@ -3,11 +3,16 @@ const root=document.documentElement;
 const search=document.querySelector('#site-search');
 const layouts={cards:'卡片',compact:'紧凑',list:'列表',minimal:'极简'};
 const engines={bing:['Bing','https://www.bing.com/search?q='],baidu:['百度','https://www.baidu.com/s?wd='],google:['Google','https://www.google.com/search?q='],duckduckgo:['DuckDuckGo','https://duckduckgo.com/?q=']};
-const backgrounds=['aurora','sunset','ocean','forest','dusk','slate','mist'];
+const backgrounds=['aurora','sunset','ocean','forest','dusk','slate','mist','spectrum'];
 // Let the root canvas extend the same custom picture below Safari's chrome.
 // The preset base color also covers loading failures and browser edge areas.
 const backgroundImage=document.querySelector('.page-background');
-if(backgroundImage)root.style.setProperty('--panel-background',`url(${JSON.stringify(backgroundImage.getAttribute('src'))})`);
+if (backgroundImage) {
+ root.style.setProperty('--panel-background', `url(${JSON.stringify(backgroundImage.getAttribute('src'))})`);
+ const hideFailedBackground = () => { backgroundImage.hidden = true; };
+ backgroundImage.addEventListener('error', hideFailedBackground, { once: true });
+ if (backgroundImage.complete && !backgroundImage.naturalWidth) hideFailedBackground();
+}
 const preferenceKey='linknest-panel-preferences-v1';
 let preferences={};try{preferences=JSON.parse(localStorage.getItem(preferenceKey)||'{}')||{};}catch{}
 if(typeof preferences!=='object'||Array.isArray(preferences))preferences={};

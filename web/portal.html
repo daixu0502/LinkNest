@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" class="public-portal" data-theme="{{.Panel.Theme}}" data-layout="{{.Panel.Layout}}" data-background="{{.Panel.BackgroundPreset}}" data-network="{{.Panel.NetworkMode}}">
+<html lang="zh-CN" class="public-portal{{if and (not .WOL) (not .Panel.Background)}} panel-gradient-motion{{end}}" data-theme="{{.Panel.Theme}}" data-layout="{{.Panel.Layout}}" data-background="{{.Panel.BackgroundPreset}}" data-network="{{.Panel.NetworkMode}}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark"><meta name="theme-color" content="{{panelColor .Panel.BackgroundPreset}}">
 <title>{{.Title}} · 栖网</title><link rel="icon" href="{{if .Panel.Favicon}}{{.Panel.Favicon}}{{else}}/__linknest/panel-logo.svg{{end}}">
 <link rel="stylesheet" href="/__linknest/portal.css?v={{version}}"><link rel="stylesheet" href="/__linknest/scrollbars.css?v={{version}}"><link rel="stylesheet" href="/__linknest/button-feedback.css?v={{version}}"><script defer src="/__linknest/portal.js?v={{version}}"></script></head>
